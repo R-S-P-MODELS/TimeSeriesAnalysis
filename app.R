@@ -31,7 +31,7 @@ ui <- fluidPage(
       fileInput(inputId = "Arquivo",label = "Insira sua serie temporal como vetor",accept = c("*.csv","*.txt"),placeholder = "Aguardando a matriz" ),
       conditionalPanel(
         condition = "input.Referencias == 'VizualizaçõesVetoriais'",
-        selectInput("Opcoes",label = "Métrica a se observar",choices = c('Grafico','Coeficiente de Hurst','FFT Amplitude','FFT Phase Information','MAF',"LogModel","Trend","Random","Differential","Differential Hurst"))),
+        selectInput("Opcoes",label = "Métrica a se observar",choices = c('Grafico','Coeficiente de Hurst','FFT Amplitude','FFT Phase Information','MAF',"LogModel","Trend","Random","Seasonality","Differential","Differential Hurst"))),
       
       
       conditionalPanel(
@@ -43,7 +43,7 @@ ui <- fluidPage(
         numericInput("AVG",label = "Tamanho da janela",min =1,max=100,value=2 )),
       
       conditionalPanel(
-        condition="input.Opcoes=='Trend' | input.Opcoes=='Random' ",
+        condition="input.Opcoes=='Trend' | input.Opcoes=='Random' | input.Opcoes=='Seasonality' ",
         numericInput("Frequencia",label="Frequencia da Serie temporal",min=2,max=100,value=2)
       )
       
@@ -55,11 +55,11 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(id = "Referencias",
                   
-                #  tabPanel("InformacoesNumericas",tableOutput("InformacoesNumericasTabulares")),
+                  #  tabPanel("InformacoesNumericas",tableOutput("InformacoesNumericasTabulares")),
                   tabPanel("VizualizaçõesVetoriais", plotlyOutput("Vetoriais"))
-                #  tabPanel("Forecast",plotlyOutput("Forecasting"))
-                 # tabPanel("VizualizaçõesMatriciais",plotlyOutput("Matriciais")),
-                #  tabPanel("Comunidades",plotOutput("Comunidade"))
+                  #  tabPanel("Forecast",plotlyOutput("Forecasting"))
+                  # tabPanel("VizualizaçõesMatriciais",plotlyOutput("Matriciais")),
+                  #  tabPanel("Comunidades",plotOutput("Comunidade"))
       ),
       
       
@@ -89,7 +89,7 @@ ui <- fluidPage(
 server <- function(input, output) {
   options(shiny.maxRequestSize=10000000*1024^2)
   
-
+  
   leitura<-reactive({
     if(!is.null(input$Arquivo)){
       #require(data.table)
@@ -120,7 +120,7 @@ server <- function(input, output) {
       }
       if(input$Opcoes=="FFT Amplitude"){
         transf=fft(Serie)
-       Amplitude= Re(transf)*Re(transf) + Im(transf) * (-Im(transf))
+        Amplitude= Re(transf)*Re(transf) + Im(transf) * (-Im(transf))
         Objetivo=data.frame(1:length(Amplitude),Amplitude)
       }
       if(input$Opcoes=="FFT Phase Information"){
@@ -138,12 +138,12 @@ server <- function(input, output) {
         Objetivo=data.frame(1:length(LogModel),LogModel)
       }
       if(input$Opcoes=="Trend"){
-      #  Series=ts(Serie,frequency = as.numeric(input$Frequencia) )
-       # print(Series)
+        #  Series=ts(Serie,frequency = as.numeric(input$Frequencia) )
+        # print(Series)
         Decomposicao=stats::decompose(ts(Serie,frequency=input$Frequencia))
-       # print(Decomposicao)
+        # print(Decomposicao)
         Objetivo=data.frame(1:(length(Decomposicao$trend)-2),Decomposicao$trend[2:(length(Decomposicao$trend)-1)]  )
-
+        
         
       }
       if(input$Opcoes=="Random"){
@@ -166,6 +166,18 @@ server <- function(input, output) {
         
         
       }
+      if(input$Opcoes=="Seasonality"){
+        #  Series=ts(Serie,frequency = as.numeric(input$Frequencia) )
+        # print(Series)
+        Decomposicao=stats::decompose(ts(Serie,frequency=input$Frequencia))
+        Sasonalidade=Serie-Decomposicao$trend
+        Sasonalidade=matrix(Sasonalidade,nrow=input$Frequencia)
+        Sasonalidade=colMeans(Sasonalidade)
+        # print(Decomposicao)
+        Objetivo=data.frame(1:length(Sasonalidade),Sasonalidade  )
+        
+        
+      }
       
       
       # este será uma vizualização gráfica dos elementos que retornam como vetores
@@ -174,10 +186,9 @@ server <- function(input, output) {
     }
   })
   
-
+  
   
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
