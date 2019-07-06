@@ -114,7 +114,12 @@ server <- function(input, output) {
       if(input$Opcoes=="Grafico")
         Objetivo=data.frame(1:length(Serie),Serie)
       if(input$Opcoes=="Coeficiente de Hurst"){
-        coef=hurstexp(Serie, d = 8, display = FALSE)
+        Matriz=matrix(Serie,nrow=8)
+        coef=apply(Matriz,2,hurstexp,display=FALSE,d=8)
+        coef=unlist(coef)
+        coef=coef[names(coef)=='Hs']
+        
+       # coef=hurstexp(Serie, d = 8, display = FALSE)
         Objetivo=data.frame(1:length(coef),coef)
         
       }
@@ -161,7 +166,11 @@ server <- function(input, output) {
       
       if(input$Opcoes=="Differential Hurst"){
         Derivative=diff(Serie)
-        coef=hurstexp(Derivative, d = 8, display = FALSE)
+        Matriz=matrix(Derivative,nrow=8)
+        coef=apply(Matriz,2,hurstexp,display=FALSE,d=8)
+        coef=unlist(coef)
+        coef=coef[names(coef)=='Hs']
+        
         Objetivo=data.frame(1:length(coef),coef)
         
         
