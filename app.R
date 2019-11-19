@@ -45,8 +45,9 @@ ui <- fluidPage(
       conditionalPanel(
         condition="input.Opcoes=='Trend' | input.Opcoes=='Random' | input.Opcoes=='Seasonality' ",
         numericInput("Frequencia",label="Frequencia da Serie temporal",min=2,max=100,value=2)
-      )
+      ),
       
+      uiOutput("Eixox")
       
       
     ),
@@ -89,11 +90,29 @@ ui <- fluidPage(
 server <- function(input, output) {
   options(shiny.maxRequestSize=10000000*1024^2)
   
+  output$Eixox = renderUI({
+    if(!is.null(input$Arquivo)){
+      w=leitura()
+      #w=LeituraArquivoCsv()
+      
+        selectInput("X", label = "Variable",choices = names(w))
+      
+      
+      
+      
+    }
+  })
+  
+  
   
   leitura<-reactive({
     if(!is.null(input$Arquivo)){
-      #require(data.table)
-      Serie=scan(input$Arquivo$datapath)
+      require(data.table)
+      Serie=fread(input$Arquivo$datapath)
+      Serie=as.data.frame(Serie)
+      vec=sapply(Serie,class) %in% c('integer','numeric')
+      if(ncol(Serie)>1)
+        Serie=Serie[,vec]
       return(Serie)
     }
   })
@@ -110,7 +129,10 @@ server <- function(input, output) {
     if(!is.null(input$Arquivo)){
       #require(data.table)
       Serie=leitura()
+      Serie=Serie[input$X]
+      Serie=as.numeric(unlist(c(Serie)))
       
+      Extra=c()
       if(input$Opcoes=="Grafico")
         Objetivo=data.frame(1:length(Serie),Serie)
       if(input$Opcoes=="Coeficiente de Hurst"){
@@ -126,6 +148,8 @@ server <- function(input, output) {
       if(input$Opcoes=="FFT Amplitude"){
         transf=fft(Serie)
         Amplitude= Re(transf)*Re(transf) + Im(transf) * (-Im(transf))
+        Amplitude=Amplitude[1:(length(Amplitude)/2) ]
+        Amplitude=Amplitude[5:length(Amplitude)]
         Objetivo=data.frame(1:length(Amplitude),Amplitude)
       }
       if(input$Opcoes=="FFT Phase Information"){
@@ -188,10 +212,28 @@ server <- function(input, output) {
         
       }
       
+      if(input$Opcoes=='Envolope de maximo'){
+        #MinMax=which(diff(Serie)[1:(length(Serie)-2)]==0  & diff(diff(Serie))==0)
+        Candidatos=as.numeric(diff(Serie)>0)
+        Minimos=which(diff(diff(Candidatos)) ==-2 )
+        Maximos=which(diff(diff(Candidatos)) ==2 )
+        print(length(Minimos))
+        print(length(Maximos))
+        #MinMax[length(MinMax)+1]=MinMax[length(MinMax)]
+        #MinMax[length(MinMax)+2]=MinMax[length(MinMax)]
+        Extra=geom_line(aes(x=Minimos,y=Serie[Minimos],col="red")) #+ geom_line(aes(x=Maximos,y=Serie[Maximos],col="blue"))
+        Objetivo=data.frame(1:length(Serie),Serie)
+        
+      #  print(c(length(Serie),length(MinMax)))
+      }
+      
       
       # este será uma vizualização gráfica dos elementos que retornam como vetores
       names(Objetivo)=c('objeto','valor')
-      ggplotly(ggplot(data=Objetivo,aes(x=objeto,y=valor)) +geom_line()   )
+      if(length(Extra)>0)
+        ggplotly(ggplot() +labs(x="Objetivo",y="valor") +geom_line(aes(x=Objetivo$objeto,y=Objetivo$valor)) +Extra  )
+      else
+        ggplotly(ggplot(data=Objetivo,aes(x=objeto,y=valor)) +geom_line()   )
     }
   })
   
